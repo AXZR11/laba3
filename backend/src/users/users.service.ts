@@ -3,8 +3,8 @@ import { Repository } from "typeorm";
 import { UsersEntity } from "./users.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { JwtService } from "@nestjs/jwt";
-import * as bcrypt from 'bcryptjs';
 import { RecordsEntity } from "src/records/records.entity";
+import { createHash } from "crypto";
 
 @Injectable()
 export class UsersService{
@@ -16,13 +16,19 @@ export class UsersService{
         private recordsRepository: Repository<RecordsEntity>
     ) {}
 
+    private hashPassword(password: string): string {
+        return createHash('sha1').update(password).digest('hex')
+    }
+
     async register(username: string, password: string, email: string): Promise<UsersEntity> {
-        const hashedPassword = await bcrypt.hash(password,10)
+        const hashedPassword = this.hashPassword(password)
         const newUser = this.usersRepository.create({
             username,
             password: hashedPassword,
-            email
+            email,
         })
+        newUser.passwordUpdatedAt = new Date()
+
         return this.usersRepository.save(newUser)
     }
 
@@ -34,13 +40,37 @@ export class UsersService{
         return user
     }
 
+    async blockUser(id: number): Promise<{ message: string }> {
+        const user = await this.findById(id)
+        user.isBlocked = true
+        await this.usersRepository.save(user)
+        return { message: 'Аккаунт успешно заблокирован' }
+    }
+
+    async unblockUser(id: number, adminId: number): Promise<{ message: string }> {
+        const admin = await this.findById(adminId)
+        if (admin.role !== 'admin') {
+            throw new UnauthorizedException('Только админ может разблокировать пользователей')
+        }
+        const user = await this.findById(id)
+        user.isBlocked = false
+        await this.usersRepository.save(user)
+        return { message: 'Аккаунт пользователя успешно разблокирован' }
+    }
+
     async findByUsername(username: string): Promise<UsersEntity> {
         return this.usersRepository.findOne({ where: { username } })
     }
 
+    async updatePassword(id_user: number, hashedPassword: string): Promise<void> {
+        await this.usersRepository.update({ id_user }, { password: hashedPassword })
+    }
+
     async validateUser(username: string, password: string): Promise<UsersEntity> {
         const user = await this.findByUsername(username)
-        if (user && await bcrypt.compare(password, user.password)) {
+        const hashedPassword = this.hashPassword(password)
+
+        if (user && hashedPassword === user.password) {
             return user
         }
         throw new UnauthorizedException('Invalid credentials')

@@ -18,16 +18,19 @@ const typeorm_1 = require("typeorm");
 const users_entity_1 = require("./users.entity");
 const typeorm_2 = require("@nestjs/typeorm");
 const jwt_1 = require("@nestjs/jwt");
-const bcrypt = require("bcrypt");
 const records_entity_1 = require("../records/records.entity");
+const crypto_1 = require("crypto");
 let UsersService = class UsersService {
     constructor(usersRepository, jwtService, recordsRepository) {
         this.usersRepository = usersRepository;
         this.jwtService = jwtService;
         this.recordsRepository = recordsRepository;
     }
+    hashPassword(password) {
+        return (0, crypto_1.createHash)('sha1').update(password).digest('hex');
+    }
     async register(username, password, email) {
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = this.hashPassword(password);
         const newUser = this.usersRepository.create({
             username,
             password: hashedPassword,
@@ -42,12 +45,32 @@ let UsersService = class UsersService {
         }
         return user;
     }
+    async blockUser(id) {
+        const user = await this.findById(id);
+        user.isBlocked = true;
+        await this.usersRepository.save(user);
+        return { message: 'Аккаунт успешно заблокирован' };
+    }
+    async unblockUser(id, adminId) {
+        const admin = await this.findById(adminId);
+        if (admin.role !== 'admin') {
+            throw new common_1.UnauthorizedException('Только админ может разблокировать пользователей');
+        }
+        const user = await this.findById(id);
+        user.isBlocked = false;
+        await this.usersRepository.save(user);
+        return { message: 'Аккаунт пользователя успешно разблокирован' };
+    }
     async findByUsername(username) {
         return this.usersRepository.findOne({ where: { username } });
     }
+    async updatePassword(id_user, hashedPassword) {
+        await this.usersRepository.update({ id_user }, { password: hashedPassword });
+    }
     async validateUser(username, password) {
         const user = await this.findByUsername(username);
-        if (user && await bcrypt.compare(password, user.password)) {
+        const hashedPassword = this.hashPassword(password);
+        if (user && hashedPassword === user.password) {
             return user;
         }
         throw new common_1.UnauthorizedException('Invalid credentials');

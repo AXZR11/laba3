@@ -12,6 +12,18 @@ export class UsersEntity {
     @Column({type: 'text'})
     password: string
 
+    @Column({ type: 'date', nullable: true })
+    passwordUpdatedAt: Date | null
+
+    @Column({ type: 'json', default: '[]' })
+    previousPasswords: string[]
+
+    @Column({ type: 'text', default: 'user' })
+    role: string
+
+    @Column({ type: 'boolean', default: false })
+    isBlocked: boolean
+
     @Column({unique: true})
     email: string
 

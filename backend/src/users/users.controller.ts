@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from "@nestjs/common";
+import { Request, Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { UsersEntity } from "./users.entity";
 import { JwtAuthGuard } from "src/auth/jwt-auth.guard";
+import { Roles } from "src/roles/roles.decorator";
 
 @Controller('api/users')
 export class UsersController {
@@ -42,4 +43,32 @@ export class UsersController {
     async deleteUsers(id: number): Promise<UsersEntity> {
         return this.usersService.removeUser(id)
     }
+
+    @Put(':id/block')
+    @Roles('admin')
+    @UseGuards(JwtAuthGuard)
+    async blockUser(@Param('id') id: number) {
+        return this.usersService.blockUser(id)
+    }
+
+    @Put(':id/unblock')
+    @Roles('admin')
+    @UseGuards(JwtAuthGuard)
+    async unblockUser(@Param('id') id: number, @Query('adminId') adminId: number) {
+        return this.usersService.unblockUser(id, adminId)
+    }
+
+    @Get('me')
+    @UseGuards(JwtAuthGuard)
+    async getCurrentUser(@Request() req): Promise<Partial<UsersEntity>> {
+        const user = await this.usersService.findById(req.user.userId);
+        return {
+            id_user: user.id_user,
+            username: user.username,
+            email: user.email,
+            role: user.role,
+            isBlocked: user.isBlocked,
+        }
+    }
+
 }

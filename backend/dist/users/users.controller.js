@@ -16,6 +16,7 @@ exports.UsersController = void 0;
 const common_1 = require("@nestjs/common");
 const users_service_1 = require("./users.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const roles_decorator_1 = require("../roles/roles.decorator");
 let UsersController = class UsersController {
     constructor(usersService) {
         this.usersService = usersService;
@@ -35,6 +36,12 @@ let UsersController = class UsersController {
     }
     async deleteUsers(id) {
         return this.usersService.removeUser(id);
+    }
+    async blockUser(id) {
+        return this.usersService.blockUser(id);
+    }
+    async unblockUser(id, adminId) {
+        return this.usersService.unblockUser(id, adminId);
     }
 };
 exports.UsersController = UsersController;
@@ -75,6 +82,25 @@ __decorate([
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "deleteUsers", null);
+__decorate([
+    (0, common_1.Put)(':id/block'),
+    (0, roles_decorator_1.Roles)('admin'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "blockUser", null);
+__decorate([
+    (0, common_1.Put)(':id/unblock'),
+    (0, roles_decorator_1.Roles)('admin'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Query)('adminId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Number]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "unblockUser", null);
 exports.UsersController = UsersController = __decorate([
     (0, common_1.Controller)('api/users'),
     __metadata("design:paramtypes", [users_service_1.UsersService])
